@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+    themes: light, dark --default;
+}
+
+/* Custom settings */
+@theme {
+    --font-sans: 'Figtree', sans-serif;
+}
+
+/* Vanilla JS Dropdown/Modal Utility */
+.hidden { display: none; }
