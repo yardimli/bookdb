@@ -1,0 +1,18 @@
+#TODO
+
+- click on books in series open details of the book
+- rearrange books in series
+- remove books from series
+- edit series details
+- add notes to series
+- link to amazon page on details page
+
+- mark books as read/reading/unread/did not finish along with dates
+- if reading status allow user to set progress (e.g., page number or percentage)
+- allow user to track if they read a book multiple times with dates
+
+- show icon on book list/details if book is read/unread
+- show total progress for series based on individual book progress
+
+- filter series by genre, author, or read status
+- create a genres table
