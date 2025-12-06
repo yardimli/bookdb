@@ -38,13 +38,17 @@
                             </div>
                             <div class="divider my-1"></div>
                             
-                            <div class="carousel carousel-center max-w-full p-4 space-x-4 bg-base-200/50 rounded-box min-h-[200px]">
-                                @if(!empty($collection->books))
+                            <div id="sortable-{{ $collection->id }}" class="carousel carousel-center max-w-full p-4 space-x-4 bg-base-200/50 rounded-box min-h-[200px]">
+                                @if($collection->books->count())
                                     @foreach($collection->books as $book)
-                                        <a href="/book/{{ $book['id'] }}" target="_blank">
-                                            <div class="carousel-item flex flex-col w-32 gap-2 transition-transform hover:scale-105">
-                                                <img src="{{ $book['cover'] }}" class="rounded-box h-48 object-cover shadow-sm" />
-                                                <span class="text-xs font-bold truncate text-center">{{ $book['title'] }}</span>
+                                        <a href="/book/{{ $book->external_id }}" target="_blank"  data-id="{{ $book->id }}">
+                                            <div class="carousel-item flex flex-col w-32 gap-2 transition-transform hover:scale-105" style="position: relative;">
+                                                {{-- Top-left number badge --}}
+                                                <span class="book-index-badge">
+                                                    {{ $loop->iteration }}
+                                                </span>
+                                                <img src="{{ $book->cover }}" class="rounded-box h-48 object-cover shadow-sm" />
+                                                <span class="text-xs font-bold truncate text-center">{{ $book->title }}</span>
                                             </div>
                                         </a>
                                     @endforeach
@@ -61,3 +65,56 @@
         @endif
     </div>
 </x-app-layout>
+
+<style>
+.book-index-badge {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    background-color: #1e40af; /* navy blue */
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 9999px; /* fully rounded */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+</style>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[id^='sortable-']").forEach(el => {
+        new Sortable(el, {
+            animation: 150,
+            ghostClass: "opacity-50",
+            onEnd: function (evt) {
+                let seriesId = el.id.replace("sortable-", "");
+
+                let order = [...el.children].map(child => child.getAttribute("data-id"));
+
+                // update the index badge
+                el.querySelectorAll('.carousel-item').forEach((item, idx) => {
+                    const badge = item.querySelector('.book-index-badge');
+                    if (badge) {
+                        badge.textContent = idx + 1; // counting starts from 1
+                    }
+                });
+                
+                // Send new order to Laravel
+                fetch(`/series/${seriesId}/reorder`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                    },
+                    body: JSON.stringify({ order: order })
+                });
+            }
+        })
+    });
+});
+</script>
+

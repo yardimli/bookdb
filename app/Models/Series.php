@@ -11,8 +11,13 @@ class Series extends Model
 
 	protected $fillable = ['user_id', 'title', 'description', 'books'];
 
-	protected $casts = [
-		'books' => 'array', // Automatically convert JSON to Array
-	];
+	public function books()
+	{
+    	return $this->belongsToMany(Book::class, 'series_book')
+			->withTimestamps()
+            ->withPivot('sort_order')
+            ->orderBy('series_book.sort_order');
+	}
+
 
 }
