@@ -1,7 +1,7 @@
 #TODO
 
-- click on books in series open details of the book
-- rearrange books in series
+- click on books in series open details of the book (v)
+- rearrange books in series (v)
 - remove books from series
 - edit series details
 - add notes to series
