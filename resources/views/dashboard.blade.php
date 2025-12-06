@@ -41,10 +41,12 @@
                             <div class="carousel carousel-center max-w-full p-4 space-x-4 bg-base-200/50 rounded-box min-h-[200px]">
                                 @if(!empty($collection->books))
                                     @foreach($collection->books as $book)
-                                        <div class="carousel-item flex flex-col w-32 gap-2 transition-transform hover:scale-105">
-                                            <img src="{{ $book['cover'] }}" class="rounded-box h-48 object-cover shadow-sm" />
-                                            <span class="text-xs font-bold truncate text-center">{{ $book['title'] }}</span>
-                                        </div>
+                                        <a href="/book/{{ $book['id'] }}" target="_blank">
+                                            <div class="carousel-item flex flex-col w-32 gap-2 transition-transform hover:scale-105">
+                                                <img src="{{ $book['cover'] }}" class="rounded-box h-48 object-cover shadow-sm" />
+                                                <span class="text-xs font-bold truncate text-center">{{ $book['title'] }}</span>
+                                            </div>
+                                        </a>
                                     @endforeach
                                 @else
                                     <div class="flex w-full justify-center items-center opacity-50 italic text-sm">
