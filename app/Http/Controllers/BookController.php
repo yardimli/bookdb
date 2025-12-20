@@ -7,6 +7,8 @@ use App\Models\Series;
 use App\Models\Book;
 use App\Models\SearchCache;
 use App\Models\BookCache;
+use App\Models\SeriesNote;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -31,7 +33,8 @@ class BookController extends Controller
 			->with([
 				'books' => function ($query) {
 					$query->orderBy('series_book.sort_order'); // ensure order is correct
-				}
+				},
+				'notes'
 			])
 			->get();
 
@@ -229,6 +232,7 @@ class BookController extends Controller
 			'series_id' => 'required|exists:series,id',
 			'title' => 'required|string|max:255',
 			'description' => 'nullable|string',
+			'notes.*.content' => 'nullable|string',
 		]);
 
 		$series = Series::where('id', $request->series_id)
@@ -239,6 +243,33 @@ class BookController extends Controller
 			'title' => $request->title,
 			'description' => $request->description,
 		]);
+
+		// Handle notes
+		$existingIds = [];
+
+		if ($request->notes) {
+			foreach ($request->notes as $note) {
+				if (!empty($note['id'])) {
+					// Update
+					SeriesNote::where('id', $note['id'])
+						->where('series_id', $series->id)
+						->update(['content' => $note['content']]);
+
+					$existingIds[] = $note['id'];
+				} elseif (!empty($note['content'])) {
+					// Create
+					$new = $series->notes()->create([
+						'content' => $note['content'],
+					]);
+					$existingIds[] = $new->id;
+				}
+			}
+		}
+
+		// Delete removed notes
+		$series->notes()
+			->whereNotIn('id', $existingIds)
+			->delete();
 
 		return redirect()
 			->route('dashboard')

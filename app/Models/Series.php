@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Models\SeriesNote;
+
 class Series extends Model
 {
     use HasFactory;
@@ -19,5 +21,9 @@ class Series extends Model
             ->orderBy('series_book.sort_order');
 	}
 
+	public function notes()
+	{
+    	return $this->hasMany(SeriesNote::class);
+	}
 
 }

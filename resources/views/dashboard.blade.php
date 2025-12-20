@@ -43,6 +43,10 @@
                                         data-series-id="{{ $collection->id }}"
                                         data-series-title="{{ $collection->title }}"
                                         data-series-description="{{ $collection->description }}"
+                                        data-series-notes='@json($collection->notes->map(fn($n) => [
+                                            "id" => $n->id,
+                                            "content" => $n->content
+                                        ]))'
                                         onclick="openEditSeriesModal(this)"
                                         style="cursor: pointer"
                                     >
@@ -99,28 +103,39 @@
 		</div>
 	</dialog>
 
-<dialog id="edit_series_modal" class="modal">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg">Edit Series</h3>
+<dialog id="edit_series_modal" class="modal modal-lg">
+    <div class="modal-box w-[75vw] max-w-none h-[80vh] overflow-y-auto" style="width: calc(75vw)">
+        <h2 class="font-bold text-lg">Edit Series</h2>
+        <hr style="margin: 10px 0px;">
 
         <form method="POST" action="{{ route('series.edit') }}">
             @csrf
 
             <input type="hidden" name="series_id" id="edit_series_id">
 
+            {{-- Series title --}}
             <div class="form-control mb-4">
-                <label class="label">
-                    <span class="label-text">Series Name</span>
-                </label>
+                <h4 class="font-semibold mb-3">Series Name</h4>
                 <input type="text" name="title" id="edit_series_title" class="input input-bordered w-full" required>
             </div>
 
+            {{-- Description --}}
             <div class="form-control mb-4">
-                <label class="label">
-                    <span class="label-text">Description</span>
-                </label>
-                <textarea name="description" id="edit_series_description" class="textarea textarea-bordered w-full"
-                    rows="3"></textarea>
+                <h4 class="font-semibold mb-3">Description</h4>
+                <input type="text" name="description" id="edit_series_description" class="input input-bordered w-full">
+            </div>
+
+            {{-- Notes --}}
+            <div class="mb-4">
+                <h4 class="font-semibold mb-3">Notes</h4>
+
+                <div id="series_notes_container" class="flex flex-wrap gap-4"></div>
+
+                <button type="button"
+                        class="btn btn-sm btn-outline mt-2"
+                        onclick="addSeriesNote()">
+                    ➕ Add Note
+                </button>
             </div>
 
             <div class="modal-action">
@@ -152,11 +167,53 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     z-index: 10;
 }
+.series-note {
+    position: relative;
+    background-color: #fff9b1; /* soft yellow */
+    width: 225px;
+    height: 150px;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+}
 
+.series-note textarea {
+    background: transparent;
+    border: none;
+    resize: none;
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.series-note textarea:focus {
+    outline: none;
+}
+
+.series-note .delete-note-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: #ef4444; /* red */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
+let noteIndex = 0;
 
 function openEditSeriesModal(button) {
     document.getElementById('edit_series_id').value = button.dataset.seriesId;
@@ -164,8 +221,45 @@ function openEditSeriesModal(button) {
     document.getElementById('edit_series_description').value =
         button.dataset.seriesDescription || '';
 
+    const container = document.getElementById('series_notes_container');
+    container.innerHTML = '';
+    noteIndex = 0;
+
+    let notes = [];
+    try {
+        notes = button.dataset.seriesNotes
+            ? JSON.parse(button.dataset.seriesNotes)
+            : [];
+    } catch (e) {
+        console.error('Invalid notes JSON', e);
+    }
+
+    notes.forEach(note => {
+        addSeriesNote(note.id, note.content);
+    });
+
     document.getElementById('edit_series_modal').showModal();
 }
+
+function addSeriesNote(id = '', content = '') {
+    const container = document.getElementById('series_notes_container');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'series-note relative';
+
+    wrapper.innerHTML = `
+        <input type="hidden" name="notes[${noteIndex}][id]" value="${id}">
+        <button type="button" class="delete-note-btn" onclick="this.parentElement.remove()">✕</button>
+        <textarea
+            name="notes[${noteIndex}][content]"
+            placeholder="Write a note..."
+        >${content}</textarea>
+    `;
+
+    container.appendChild(wrapper);
+    noteIndex++;
+}
+
 
 document.querySelectorAll('.book-delete-badge').forEach((badge) => {
     badge.addEventListener('click', function (e) {
