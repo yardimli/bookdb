@@ -20,6 +20,8 @@
 		Route::get('/search', [BookController::class, 'search'])->name('books.search');
 		Route::get('/book/{id}', [BookController::class, 'show'])->name('books.show');
 
+		Route::post('/book/remove', [BookController::class, 'removeFromSeries'])->name('book.remove');
+
 		// Profile
 		Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
 		Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

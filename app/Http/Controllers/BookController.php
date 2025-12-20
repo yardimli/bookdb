@@ -203,6 +203,25 @@ class BookController extends Controller
 		return redirect()->route('dashboard')->with('status', 'Book added to series!');
 	}
 
+	public function removeFromSeries(Request $request)
+	{
+		$request->validate([
+			'book_id' => 'required|exists:books,id',
+			'series_id' => 'required|exists:series,id',
+		]);
+
+		$series = Series::where('id', $request->series_id)
+			->where('user_id', Auth::id())
+			->firstOrFail();
+
+		// Remove from pivot table ONLY
+		$series->books()->detach($request->book_id);
+
+		return redirect()
+			->route('dashboard')
+			->with('status', 'Book removed from series.');
+	}
+
 	public function reorder(Request $request, Series $series)
 	{
 		$order = $request->order; // array of book IDs IN NEW ORDER

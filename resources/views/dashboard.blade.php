@@ -44,8 +44,9 @@
                                         <a href="/book/{{ $book->external_id }}" target="_blank"  data-id="{{ $book->id }}">
                                             <div class="carousel-item flex flex-col w-32 gap-2 transition-transform hover:scale-105" style="position: relative;">
                                                 {{-- Top-left number badge --}}
-                                                <span class="book-index-badge">
-                                                    {{ $loop->iteration }}
+                                                <span class="book-delete-badge" 
+                                                data-book-id="{{ $book->id }}" data-series-id="{{ $collection->id }}">
+                                                    X
                                                 </span>
                                                 <img src="{{ $book->cover }}" class="rounded-box h-48 object-cover shadow-sm" />
                                                 <span class="text-xs font-bold truncate text-center">{{ $book->title }}</span>
@@ -64,18 +65,37 @@
             </div>
         @endif
     </div>
+
+    <!-- Remove from Collection Modal -->
+	<dialog id="remove_book_modal" class="modal">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg">Remove Book</h3>
+			<p class="py-4 text-sm opacity-70">Remove book from the series.</p>
+			<form method="POST" action="{{ route('book.remove') }}">
+				@csrf
+                <!-- REQUIRED -->
+                <input type="hidden" name="book_id" id="remove_book_id">
+                <input type="hidden" name="series_id" id="remove_series_id">
+				<div class="modal-action">
+					<button type="button" class="btn" onclick="document.getElementById('remove_book_modal').close()">Cancel</button>
+					<button type="submit" class="btn btn-danger">Remove</button>
+				</div>
+			</form>
+		</div>
+	</dialog>
+
 </x-app-layout>
 
 <style>
-.book-index-badge {
+.book-delete-badge {
     position: absolute;
     top: -10px;
-    left: -10px;
-    background-color: #1e40af; /* navy blue */
+    right: -10px;
+    background-color: #878787ff; /* navy blue */
     color: white;
-    font-size: 0.65rem;
+    font-size: 0.8rem;
     font-weight: bold;
-    padding: 2px 6px;
+    padding: 2px 8px;
     border-radius: 9999px; /* fully rounded */
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     z-index: 10;
@@ -85,6 +105,22 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
+
+document.querySelectorAll('.book-delete-badge').forEach((badge) => {
+    badge.addEventListener('click', function (e) {
+    const badge = e.target;
+    if (!badge) return;
+
+    e.stopPropagation(); // ⛔ stop bubbling
+    e.preventDefault(); // ⛔ stop <a> navigation
+      
+    document.getElementById('remove_book_id').value = badge.dataset.bookId;
+    document.getElementById('remove_series_id').value = badge.dataset.seriesId;
+
+    document.getElementById('remove_book_modal').showModal();
+    })
+});
+
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[id^='sortable-']").forEach(el => {
         new Sortable(el, {
@@ -97,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // update the index badge
                 el.querySelectorAll('.carousel-item').forEach((item, idx) => {
-                    const badge = item.querySelector('.book-index-badge');
+                    const badge = item.querySelector('.book-delete-badge');
                     if (badge) {
                         badge.textContent = idx + 1; // counting starts from 1
                     }
