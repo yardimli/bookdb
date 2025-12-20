@@ -2,10 +2,10 @@
 
 - click on books in series open details of the book (v)
 - rearrange books in series (v)
-- remove books from series
-- edit series details
-- add notes to series
-- link to amazon page on details page
+- remove books from series (v)
+- edit series details (v)
+- add notes to series (v)
+- link to amazon page on details page (v)
 
 - mark books as read/reading/unread/did not finish along with dates
 - if reading status allow user to set progress (e.g., page number or percentage)
