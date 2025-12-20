@@ -13,6 +13,8 @@
 
 		// Series Routes
 		Route::post('/series/add', [BookController::class, 'addToSeries'])->name('series.add');
+		Route::post('/series/edit', [BookController::class, 'editSeries'])
+    ->name('series.edit');
 		Route::post('/series/{series}/reorder', [BookController::class, 'reorder'])
     ->name('series.reorder');
 

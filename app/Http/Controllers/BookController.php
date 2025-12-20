@@ -177,7 +177,8 @@ class BookController extends Controller
 		$book = json_decode($request->book_json, true);
 
 		// 1. Insert or update book table
-		$book = Book::create([
+		$book = Book::create(
+			[
 				'title' => $book['title'] ?? '',
 				'author' => $book['author'] ?? null,
 				'cover' => $book['cover'] ?? '',
@@ -221,6 +222,29 @@ class BookController extends Controller
 			->route('dashboard')
 			->with('status', 'Book removed from series.');
 	}
+
+	public function editSeries(Request $request)
+	{
+		$request->validate([
+			'series_id' => 'required|exists:series,id',
+			'title' => 'required|string|max:255',
+			'description' => 'nullable|string',
+		]);
+
+		$series = Series::where('id', $request->series_id)
+			->where('user_id', Auth::id())
+			->firstOrFail();
+
+		$series->update([
+			'title' => $request->title,
+			'description' => $request->description,
+		]);
+
+		return redirect()
+			->route('dashboard')
+			->with('status', 'Series updated successfully.');
+	}
+
 
 	public function reorder(Request $request, Series $series)
 	{

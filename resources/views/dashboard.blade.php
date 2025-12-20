@@ -33,7 +33,22 @@
                     <div class="card bg-base-100 shadow-md border border-base-200">
                         <div class="card-body">
                             <div class="flex justify-between items-start">
-                                <h3 class="card-title text-xl">{{ $collection->title }}</h3>
+                                <div class="flex justify-between items-start" style="align-items: anchor-center;">
+                                    <h3 class="card-title text-xl">{{ $collection->title }}</h3>
+                                    <!-- Edit icon -->
+                                    <button
+                                        type="button"
+                                        class="text-gray-500 hover:text-primary transition"
+                                        title="Edit series"
+                                        data-series-id="{{ $collection->id }}"
+                                        data-series-title="{{ $collection->title }}"
+                                        data-series-description="{{ $collection->description }}"
+                                        onclick="openEditSeriesModal(this)"
+                                        style="cursor: pointer"
+                                    >
+                                        &nbsp;✏️
+                                    </button>
+                                </div>
                                 <div class="badge badge-ghost">{{ count($collection->books ?? []) }} books</div>
                             </div>
                             <div class="divider my-1"></div>
@@ -84,6 +99,43 @@
 		</div>
 	</dialog>
 
+<dialog id="edit_series_modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Edit Series</h3>
+
+        <form method="POST" action="{{ route('series.edit') }}">
+            @csrf
+
+            <input type="hidden" name="series_id" id="edit_series_id">
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Series Name</span>
+                </label>
+                <input type="text" name="title" id="edit_series_title" class="input input-bordered w-full" required>
+            </div>
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Description</span>
+                </label>
+                <textarea name="description" id="edit_series_description" class="textarea textarea-bordered w-full"
+                    rows="3"></textarea>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn" onclick="document.getElementById('edit_series_modal').close()">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+
 </x-app-layout>
 
 <style>
@@ -105,6 +157,15 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
+
+function openEditSeriesModal(button) {
+    document.getElementById('edit_series_id').value = button.dataset.seriesId;
+    document.getElementById('edit_series_title').value = button.dataset.seriesTitle;
+    document.getElementById('edit_series_description').value =
+        button.dataset.seriesDescription || '';
+
+    document.getElementById('edit_series_modal').showModal();
+}
 
 document.querySelectorAll('.book-delete-badge').forEach((badge) => {
     badge.addEventListener('click', function (e) {
