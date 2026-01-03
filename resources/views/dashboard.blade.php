@@ -17,6 +17,24 @@
                 </button>
             </form>
         </div>
+
+        {{-- Genre Filters --}}
+        <div class="flex flex-wrap gap-2 mb-6" id="genre-filters">
+            <button class="genre-filter-btn active" data-genre="ALL" onclick="filterByGenre('ALL', this)">
+                ALL
+            </button>
+
+            @foreach($genres as $genre)
+                <button class="genre-filter-btn" data-genre="{{ $genre->name }}"
+                    onclick="filterByGenre('{{ $genre->name }}', this)">
+                    {{ $genre->name }}
+                </button>
+            @endforeach
+        </div>
+
+        <div id="no-series-message" class="text-center text-gray-500 italic mb-4" style="display: none;">
+            No series found in this genre.
+        </div>
         
         @if($series->isEmpty())
             <div class="hero bg-base-200 rounded-box p-10 border border-base-300">
@@ -30,7 +48,8 @@
         @else
             <div class="grid gap-6">
                 @foreach($series as $collection)
-                    <div class="card bg-base-100 shadow-md border border-base-200">
+                    <div class="card bg-base-100 shadow-md border border-base-200 series-card"
+                        data-genres='@json($collection->genres->pluck("name"))'>
                         <div class="card-body">
                             <div class="flex justify-between items-start">
                                 <div class="flex justify-between items-start" style="align-items: anchor-center;">
@@ -44,9 +63,12 @@
                                         data-series-title="{{ $collection->title }}"
                                         data-series-description="{{ $collection->description }}"
                                         data-series-notes='@json($collection->notes->map(fn($n) => [
-                                            "id" => $n->id,
-                                            "content" => $n->content
-                                        ]))'
+            "id" => $n->id,
+            "content" => $n->content
+        ]))'
+                                        data-series-genres='@json(
+            $collection->genres->pluck("name")
+        )'
                                         onclick="openEditSeriesModal(this)"
                                         style="cursor: pointer"
                                     >
@@ -124,7 +146,18 @@
                 <h4 class="font-semibold mb-3">Description</h4>
                 <input type="text" name="description" id="edit_series_description" class="input input-bordered w-full">
             </div>
-
+            
+            {{-- Genres --}}
+            <div class="form-control mb-4">
+                <h4 class="font-semibold mb-3">Genres</h4>
+            
+                <select id="genres-select" name="genres[]" multiple class="w-full" placeholder="Select or type genres...">
+                    @foreach($genres as $genre)
+                        <option value="{{ $genre->name }}">{{ $genre->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            
             {{-- Notes --}}
             <div class="mb-4">
                 <h4 class="font-semibold mb-3">Notes</h4>
@@ -154,6 +187,26 @@
 </x-app-layout>
 
 <style>
+.genre-filter-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: white;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.genre-filter-btn:hover {
+    background: #f3f4f6;
+}
+
+.genre-filter-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
 .book-delete-badge {
     position: absolute;
     top: -10px;
@@ -212,8 +265,25 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+
 <script>
 let noteIndex = 0;
+
+let genreSelect = new TomSelect('#genres-select', {
+    plugins: ['remove_button'],
+    persist: false,
+    create: true,               // 🔥 allow free typing
+    createOnBlur: true,
+    maxItems: null,             // unlimited
+    valueField: 'value',
+    labelField: 'text',
+    searchField: ['text'],
+    placeholder: 'Select or type genres...',
+});
+
 
 function openEditSeriesModal(button) {
     document.getElementById('edit_series_id').value = button.dataset.seriesId;
@@ -238,6 +308,21 @@ function openEditSeriesModal(button) {
         addSeriesNote(note.id, note.content);
     });
 
+
+    // ---- genres (FIXED) ----
+    genreSelect.clear(true);   // clear selected items ONLY
+
+    let genres = [];
+    try {
+        genres = button.dataset.seriesGenres
+            ? JSON.parse(button.dataset.seriesGenres)
+            : [];
+    } catch (e) {}
+
+    genres.forEach(name => {
+        genreSelect.addItem(name); // ✅ select only
+    });
+
     document.getElementById('edit_series_modal').showModal();
 }
 
@@ -260,6 +345,31 @@ function addSeriesNote(id = '', content = '') {
     noteIndex++;
 }
 
+function filterByGenre(genre, button) {
+    const cards = document.querySelectorAll('.series-card');
+    let anyVisible = false;
+
+    cards.forEach(card => {
+        const genres = JSON.parse(card.dataset.genres || '[]');
+
+        if (genre === 'ALL' || genres.includes(genre)) {
+            card.style.display = '';
+            anyVisible = true;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Show/hide “no series” message
+    const noSeriesMsg = document.getElementById('no-series-message');
+    noSeriesMsg.style.display = anyVisible ? 'none' : '';
+
+    // update active button state
+    document.querySelectorAll('.genre-filter-btn')
+        .forEach(btn => btn.classList.remove('active'));
+
+    button.classList.add('active');
+}
 
 document.querySelectorAll('.book-delete-badge').forEach((badge) => {
     badge.addEventListener('click', function (e) {
@@ -307,5 +417,6 @@ document.addEventListener("DOMContentLoaded", () => {
         })
     });
 });
+
 </script>
 

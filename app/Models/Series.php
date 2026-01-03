@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 use App\Models\SeriesNote;
+use App\Models\Genre;
 
 class Series extends Model
 {
@@ -25,5 +26,11 @@ class Series extends Model
 	{
     	return $this->hasMany(SeriesNote::class);
 	}
+
+	public function genres()
+    {
+        return $this->belongsToMany(Genre::class)
+                    ->withTimestamps();
+    }
 
 }

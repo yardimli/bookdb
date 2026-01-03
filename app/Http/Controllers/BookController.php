@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
+use App\Models\Genre;
+
 class BookController extends Controller
 {
 	/**
@@ -34,11 +36,14 @@ class BookController extends Controller
 				'books' => function ($query) {
 					$query->orderBy('series_book.sort_order'); // ensure order is correct
 				},
-				'notes'
+				'notes',
+				'genres'
 			])
 			->get();
 
-		return view('dashboard', compact('series'));
+		$genres = Genre::orderBy('name')->get();
+
+		return view('dashboard', compact('series', 'genres'));
 	}
 
 	public function search(Request $request)
@@ -270,6 +275,18 @@ class BookController extends Controller
 		$series->notes()
 			->whereNotIn('id', $existingIds)
 			->delete();
+
+		// Handle Genre
+		$genres = $request->genres;
+		$genreIds = [];
+
+		foreach ($genres as $name) {
+    		$genre = Genre::firstOrCreate(['name' => $name]);
+    		$genreIds[] = $genre->id;
+		}
+
+		// Sync genres to series
+		$series->genres()->sync($genreIds);
 
 		return redirect()
 			->route('dashboard')
