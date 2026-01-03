@@ -14,5 +14,5 @@
 - show icon on book list/details if book is read/unread
 - show total progress for series based on individual book progress
 
-- filter series by genre, author, or read status
-- create a genres table
+- filter series by genre, author, or read status (v)
+- create a genres table (v)
