@@ -48,12 +48,28 @@
         @else
             <div class="grid gap-6">
                 @foreach($series as $collection)
+                    @php
+  $books = $collection->books;
+  $count = $books->count();
+  $sum = 0;
+
+  foreach ($books as $b) {
+    $ubs = $b->userStatuses->first();
+    $st = $ubs->status ?? 'unread';
+
+    if ($st === 'read') $sum += 100;
+    elseif ($st === 'reading') $sum += (int)($ubs->progress_percent ?? 0);
+  }
+
+  $seriesProgress = $count ? round($sum / $count) : 0;
+@endphp
                     <div class="card bg-base-100 shadow-md border border-base-200 series-card"
                         data-genres='@json($collection->genres->pluck("name"))'>
                         <div class="card-body">
                             <div class="flex justify-between items-start">
                                 <div class="flex justify-between items-start" style="align-items: anchor-center;">
                                     <h3 class="card-title text-xl">{{ $collection->title }}</h3>
+                                    <span style="font-weight: bold;">({{ $seriesProgress }}%)</span>
                                     <!-- Edit icon -->
                                     <button
                                         type="button"
@@ -63,18 +79,19 @@
                                         data-series-title="{{ $collection->title }}"
                                         data-series-description="{{ $collection->description }}"
                                         data-series-notes='@json($collection->notes->map(fn($n) => [
-            "id" => $n->id,
-            "content" => $n->content
-        ]))'
+                                            "id" => $n->id,
+                                            "content" => $n->content
+                                        ]))'
                                         data-series-genres='@json(
-            $collection->genres->pluck("name")
-        )'
+                                        $collection->genres->pluck("name")
+                                        )'
                                         onclick="openEditSeriesModal(this)"
                                         style="cursor: pointer"
                                     >
                                         &nbsp;✏️
                                     </button>
                                 </div>
+                                
                                 <div class="badge badge-ghost">{{ count($collection->books ?? []) }} books</div>
                             </div>
                             <div class="divider my-1"></div>
@@ -82,7 +99,10 @@
                             <div id="sortable-{{ $collection->id }}" class="carousel carousel-center max-w-full p-4 space-x-4 bg-base-200/50 rounded-box min-h-[200px]">
                                 @if($collection->books->count())
                                     @foreach($collection->books as $book)
-                                        <a href="/book/{{ $book->external_id }}" target="_blank"  data-id="{{ $book->id }}">
+                                    @php
+                                        $status = optional($book->userStatuses->first())->status ?? 'unread';
+                                    @endphp
+                                    <a href="/book/{{ $book->external_id }}" target="_blank"  data-id="{{ $book->id }}">
                                             <div class="carousel-item flex flex-col w-32 gap-2 transition-transform hover:scale-105" style="position: relative;">
                                                 {{-- Top-left number badge --}}
                                                 <span class="book-delete-badge" 
@@ -91,6 +111,13 @@
                                                 </span>
                                                 <img src="{{ $book->cover }}" class="rounded-box h-48 object-cover shadow-sm" />
                                                 <span class="text-xs font-bold truncate text-center">{{ $book->title }}</span>
+                                                <span class="absolute badge badge-ghost" style="bottom: 24px; left: 0px; background-color: var(--color-primary);color: var(--color-primary-content);">
+                                                    @if($status === 'read') Read
+                                                    @elseif($status === 'reading') Reading
+                                                    @elseif($status === 'dnf') Did Not Finish
+                                                    @else Unread
+                                                    @endif
+                                                </span>
                                             </div>
                                         </a>
                                     @endforeach

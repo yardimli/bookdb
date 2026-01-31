@@ -24,6 +24,10 @@
 
 		Route::post('/book/remove', [BookController::class, 'removeFromSeries'])->name('book.remove');
 
+		Route::post('/books/{book}/status', [BookController::class, 'updateBookStatus'])->name('book.status');
+		Route::post('/books/{book}/progress', [BookController::class, 'updateBookProgress'])->name('book.progress');
+
+
 		// Profile
 		Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
 		Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

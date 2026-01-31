@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Models\UserBookStatus;
+use App\Models\UserBookReadLog;
+
 class Book extends Model
 {
     use HasFactory;
@@ -20,4 +23,15 @@ class Book extends Model
                     ->withPivot('sort_order')
                     ->orderBy('series_book.sort_order');
     }
+
+    public function userStatuses()
+    {
+        return $this->hasMany(UserBookStatus::class);
+    }
+
+    public function readLogs()
+    {
+        return $this->hasMany(UserBookReadLog::class);
+    }
+
 }

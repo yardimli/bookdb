@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 use App\Models\Genre;
+use App\Models\UserBookStatus;
+use App\Models\UserBookReadLog;
 
 class BookController extends Controller
 {
@@ -31,10 +33,17 @@ class BookController extends Controller
 
 	public function index()
 	{
-		$series = Series::where('user_id', Auth::id())
+		$userId = Auth::id();
+
+		$series = Series::where('user_id', $userId)
 			->with([
-				'books' => function ($query) {
-					$query->orderBy('series_book.sort_order'); // ensure order is correct
+				'books' => function ($q) use ($userId) {
+					$q->orderBy('series_book.sort_order')
+						->with([
+							'userStatuses' => function ($s) use ($userId) {
+								$s->where('user_id', $userId);
+							}
+						]);
 				},
 				'notes',
 				'genres'
@@ -185,7 +194,7 @@ class BookController extends Controller
 		$book = json_decode($request->book_json, true);
 
 		// 1. Insert or update book table
-		$book = Book::create(
+		$book = Book::firstOrCreate(
 			[
 				'title' => $book['title'] ?? '',
 				'author' => $book['author'] ?? null,
@@ -281,8 +290,8 @@ class BookController extends Controller
 		$genreIds = [];
 
 		foreach ($genres as $name) {
-    		$genre = Genre::firstOrCreate(['name' => $name]);
-    		$genreIds[] = $genre->id;
+			$genre = Genre::firstOrCreate(['name' => $name]);
+			$genreIds[] = $genre->id;
 		}
 
 		// Sync genres to series
@@ -292,8 +301,6 @@ class BookController extends Controller
 			->route('dashboard')
 			->with('status', 'Series updated successfully.');
 	}
-
-
 	public function reorder(Request $request, Series $series)
 	{
 		$order = $request->order; // array of book IDs IN NEW ORDER
@@ -304,6 +311,111 @@ class BookController extends Controller
 		}
 
 		return response()->json(['status' => 'ok']);
+	}
+
+	public function updateBookStatus(Request $request, Book $book)
+	{
+		$request->validate([
+			'status' => 'required|in:unread,reading,read,dnf',
+			'started_at' => 'nullable|date',
+			'finished_at' => 'nullable|date',
+			'dnf_at' => 'nullable|date',
+		]);
+
+		$userId = Auth::id();
+
+		$ubs = UserBookStatus::firstOrCreate(
+			['user_id' => $userId, 'book_id' => $book->id],
+			['status' => 'unread']
+		);
+
+		$status = $request->status;
+
+		// 基本規則：切換狀態時順手補日期（你也可更嚴格）
+		$data = ['status' => $status];
+
+		if ($status === 'reading') {
+			$data['started_at'] = $request->started_at ?? ($ubs->started_at ?? now()->toDateString());
+			$data['finished_at'] = null;
+			$data['dnf_at'] = null;
+		}
+
+		if ($status === 'read') {
+			$data['finished_at'] = $request->finished_at ?? now()->toDateString();
+			$data['dnf_at'] = null;
+
+			// 寫入一次「閱讀完成紀錄」：允許多次閱讀
+			UserBookReadLog::create([
+				'user_id' => $userId,
+				'book_id' => $book->id,
+				'started_at' => $ubs->started_at,
+				'finished_at' => $data['finished_at'],
+			]);
+
+			// 讀完就把進度拉滿（可選）
+			if ($ubs->progress_percent !== null)
+				$data['progress_percent'] = 100;
+		}
+
+		if ($status === 'dnf') {
+			$data['dnf_at'] = $request->dnf_at ?? now()->toDateString();
+			$data['finished_at'] = null;
+		}
+
+		if ($status === 'unread') {
+			$data['started_at'] = null;
+			$data['finished_at'] = null;
+			$data['dnf_at'] = null;
+			$data['progress_page'] = null;
+			$data['progress_percent'] = null;
+		}
+
+		$ubs->update($data);
+
+		return back()->with('status', 'Book status updated.');
+	}
+
+	public function updateBookProgress(Request $request, Book $book)
+	{
+		$request->validate([
+			'progress_page' => 'nullable|integer|min:0',
+			'progress_percent' => 'nullable|integer|min:0|max:100',
+		]);
+
+		$userId = Auth::id();
+
+		$ubs = UserBookStatus::firstOrCreate(
+			['user_id' => $userId, 'book_id' => $book->id],
+			['status' => 'unread']
+		);
+
+		// 只要更新進度，就自動把狀態調成 reading（你可改）
+		$data = [
+			'progress_page' => $request->progress_page,
+			'progress_percent' => $request->progress_percent,
+		];
+
+		if ($ubs->status === 'unread') {
+			$data['status'] = 'reading';
+			$data['started_at'] = $ubs->started_at ?? now()->toDateString();
+		}
+
+		// 100% 自動 read（可選）
+		if ($request->progress_percent === 100) {
+			$data['status'] = 'read';
+			$data['finished_at'] = now()->toDateString();
+
+			UserBookReadLog::create([
+				'user_id' => $userId,
+				'book_id' => $book->id,
+				'started_at' => $ubs->started_at,
+				'finished_at' => $data['finished_at'],
+			]);
+		}
+
+		$ubs->update($data);
+
+		return back()->with('status', 'Progress updated.');
 	}
 
 }
