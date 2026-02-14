@@ -195,6 +195,7 @@ class BookController extends Controller
 
 		// 1. Insert or update book table
 		$book = Book::firstOrCreate(
+			['external_id' => $book['id'] ?? null],
 			[
 				'title' => $book['title'] ?? '',
 				'author' => $book['author'] ?? null,
@@ -416,6 +417,78 @@ class BookController extends Controller
 		$ubs->update($data);
 
 		return back()->with('status', 'Progress updated.');
+	}
+
+	public function saveBookStatus(Request $request)
+	{
+		$request->validate([
+			'book_id' => 'required|exists:books,id',
+			'status' => 'required|in:unread,reading,read,dnf',
+			'progress_page' => 'nullable|integer|min:0',
+			'progress_percent' => 'nullable|integer|min:0|max:100',
+			'started_at' => 'nullable|date',
+			'finished_at' => 'nullable|date',
+			'dnf_at' => 'nullable|date',
+		]);
+
+		$userId = Auth::id();
+		$bookId = (int) $request->book_id;
+
+		$ubs = UserBookStatus::firstOrCreate(
+			['user_id' => $userId, 'book_id' => $bookId],
+			['status' => 'unread']
+		);
+
+		$status = $request->status;
+
+		$data = [
+			'status' => $status,
+			'progress_page' => $request->progress_page,
+			'progress_percent' => $request->progress_percent,
+			'started_at' => $request->started_at,
+			'finished_at' => $request->finished_at,
+			'dnf_at' => $request->dnf_at,
+		];
+
+		if ($status === 'unread') {
+			$data['progress_page'] = null;
+			$data['progress_percent'] = null;
+			$data['started_at'] = null;
+			$data['finished_at'] = null;
+			$data['dnf_at'] = null;
+		}
+
+		if ($status === 'reading') {
+			$data['finished_at'] = null;
+			$data['dnf_at'] = null;
+			$data['started_at'] = $data['started_at'] ?? ($ubs->started_at ?? now()->toDateString());
+		}
+
+		if ($status === 'dnf') {
+			$data['finished_at'] = null;
+			$data['dnf_at'] = $data['dnf_at'] ?? now()->toDateString();
+		}
+
+		if ($status === 'read') {
+			$data['dnf_at'] = null;
+			$data['finished_at'] = $data['finished_at'] ?? now()->toDateString();
+
+			// 可選：percent 直接拉滿
+			if ($data['progress_percent'] !== null)
+				$data['progress_percent'] = 100;
+
+			// 寫入閱讀完成紀錄（允許多次）
+			UserBookReadLog::create([
+				'user_id' => $userId,
+				'book_id' => $bookId,
+				'started_at' => $data['started_at'] ?? $ubs->started_at,
+				'finished_at' => $data['finished_at'],
+			]);
+		}
+
+		$ubs->update($data);
+
+		return back()->with('status', 'Book status saved.');
 	}
 
 }

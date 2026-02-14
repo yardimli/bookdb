@@ -24,6 +24,7 @@
 
 		Route::post('/book/remove', [BookController::class, 'removeFromSeries'])->name('book.remove');
 
+		Route::post('/books/status/save', [BookController::class, 'saveBookStatus'])->name('book.status.save');
 		Route::post('/books/{book}/status', [BookController::class, 'updateBookStatus'])->name('book.status');
 		Route::post('/books/{book}/progress', [BookController::class, 'updateBookProgress'])->name('book.progress');
 

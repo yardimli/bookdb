@@ -111,13 +111,28 @@
                                                 </span>
                                                 <img src="{{ $book->cover }}" class="rounded-box h-48 object-cover shadow-sm" />
                                                 <span class="text-xs font-bold truncate text-center">{{ $book->title }}</span>
-                                                <span class="absolute badge badge-ghost" style="bottom: 24px; left: 0px; background-color: var(--color-primary);color: var(--color-primary-content);">
-                                                    @if($status === 'read') Read
-                                                    @elseif($status === 'reading') Reading
-                                                    @elseif($status === 'dnf') Did Not Finish
-                                                    @else Unread
-                                                    @endif
-                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    class="absolute btn btn-primary btn-xs" style="bottom: 16px; right: -6px;"
+                                                    title="Edit status"
+                                                    onclick="openEditBookStatusModal(this, event)"
+                                                    data-book-id="{{ $book->id }}"
+                                                    data-book-title="{{ e($book->title) }}"
+                                                    data-status="{{ $st }}"
+                                                    data-progress-page="{{ $ubs?->progress_page ?? '' }}"
+                                                    data-progress-percent="{{ $ubs?->progress_percent ?? '' }}"
+                                                    data-started-at="{{ optional($ubs?->started_at)->format('Y-m-d') ?? '' }}"
+                                                    data-finished-at="{{ optional($ubs?->finished_at)->format('Y-m-d') ?? '' }}"
+                                                    data-dnf-at="{{ optional($ubs?->dnf_at)->format('Y-m-d') ?? '' }}"
+                                                >
+                                                        @if($status === 'read') Read
+                                                        @elseif($status === 'reading') Reading
+                                                        @elseif($status === 'dnf') Did Not Finish   
+                                                        @else Unread
+                                                        @endif
+                                                </button>
+
                                             </div>
                                         </a>
                                     @endforeach
@@ -210,6 +225,71 @@
     </div>
 </dialog>
 
+<dialog id="edit_book_status_modal" class="modal">
+  <div class="modal-box w-[75vw] max-w-none" style="width: calc(75vw)">
+    <h3 class="font-bold text-lg">Edit Book Status</h3>
+    <p class="text-sm opacity-70 mt-1" id="edit_book_status_title"></p>
+
+    <form method="POST" action="{{ route('book.status.save') }}" class="mt-4" id="edit_book_status_form">
+      @csrf
+
+      <input type="hidden" name="book_id" id="edit_book_id">
+
+      {{-- Status --}}
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text font-semibold">Status</span></label>
+        <select class="select select-bordered w-full" name="status" id="edit_status" onchange="toggleProgressFields()">
+          <option value="unread">Unread</option>
+          <option value="reading">Reading</option>
+          <option value="read">Read</option>
+          <option value="dnf">Did Not Finish</option>
+        </select>
+      </div>
+
+      {{-- Progress (only when reading) --}}
+      <div id="progress_fields" class="grid grid-cols-2 gap-3 mb-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Progress (page)</span></label>
+          <input type="number" min="0" class="input input-bordered" name="progress_page" id="edit_progress_page" placeholder="e.g. 120">
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Progress (%)</span></label>
+          <input type="number" min="0" max="100" class="input input-bordered" name="progress_percent" id="edit_progress_percent" placeholder="e.g. 45">
+        </div>
+
+        <div class="col-span-2 text-xs opacity-70">
+          Tip: you can fill either page or percent (or both).
+        </div>
+      </div>
+
+      {{-- Dates --}}
+      <div class="grid grid-cols-3 gap-3 mb-2">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Started</span></label>
+          <input type="date" class="input input-bordered" name="started_at" id="edit_started_at">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Finished</span></label>
+          <input type="date" class="input input-bordered" name="finished_at" id="edit_finished_at">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">DNF</span></label>
+          <input type="date" class="input input-bordered" name="dnf_at" id="edit_dnf_at">
+        </div>
+      </div>
+
+      <div class="text-xs opacity-60 mb-4">
+        When status is “Reading”, Finished/DNF will be cleared. When “Read”, DNF will be cleared and a read log will be added.
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn" onclick="document.getElementById('edit_book_status_modal').close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</dialog>
 
 </x-app-layout>
 
@@ -396,6 +476,46 @@ function filterByGenre(genre, button) {
         .forEach(btn => btn.classList.remove('active'));
 
     button.classList.add('active');
+}
+
+function openEditBookStatusModal(btn, event) {
+  if (event) {
+        event.preventDefault();      // ⛔ 阻止 <a> 導航
+        event.stopPropagation();     // ⛔ 阻止事件冒泡
+    }
+
+  document.getElementById('edit_book_id').value = btn.dataset.bookId;
+  document.getElementById('edit_book_status_title').textContent = btn.dataset.bookTitle || '';
+
+  document.getElementById('edit_status').value = btn.dataset.status || 'unread';
+
+  document.getElementById('edit_progress_page').value = btn.dataset.progressPage || '';
+  document.getElementById('edit_progress_percent').value = btn.dataset.progressPercent || '';
+
+  document.getElementById('edit_started_at').value = btn.dataset.startedAt || '';
+  document.getElementById('edit_finished_at').value = btn.dataset.finishedAt || '';
+  document.getElementById('edit_dnf_at').value = btn.dataset.dnfAt || '';
+
+  toggleProgressFields();
+
+  document.getElementById('edit_book_status_modal').showModal();
+}
+
+function toggleProgressFields() {
+  const st = document.getElementById('edit_status').value;
+  const progress = document.getElementById('progress_fields');
+
+  // 只有 reading 顯示 progress
+  progress.style.display = (st === 'reading') ? '' : 'none';
+
+  // 你也可以在前端順便清除不該填的日期（可選）
+  if (st === 'reading') {
+    document.getElementById('edit_finished_at').value = '';
+    document.getElementById('edit_dnf_at').value = '';
+  }
+  if (st === 'read') {
+    document.getElementById('edit_dnf_at').value = '';
+  }
 }
 
 document.querySelectorAll('.book-delete-badge').forEach((badge) => {
